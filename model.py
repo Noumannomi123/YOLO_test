@@ -6,10 +6,9 @@ import cv2
 import numpy as np
 from PIL import Image
 import torch
-from fastapi.requests import Request
+from pydantic import BaseModel
 from fastapi.responses import JSONResponse
-import base64
-from io import BytesIO
+from image_utils import numpy_to_base64, base64_to_numpy
 def plot_image(image, ax=None):
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(10, 10))
@@ -48,22 +47,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-class PredictRequest(Request):
-    image: np.ndarray
+class PredictRequest(BaseModel):
+    image: str
 @app.get("/")
 def home():
     return {"message": "Welcome to YOLO model API."}
 
 
-@app.get("/predict")
+@app.post("/predict")
 def predict(request: PredictRequest):
-    path = "images/bus.jpg"
-    image = np.array(Image.open(path).convert("RGB"))
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image = base64_to_numpy(request.image)
     results = app.state.model(image)
     result_img = plot_results(results, image, app.state.model)
-    _, buffer = cv2.imencode(".jpg", result_img)
-    img_base64 = base64.b64encode(buffer).decode('utf-8')
+    img_base64 = numpy_to_base64(result_img)
     return JSONResponse(content = {'image': img_base64})
 
 if __name__ == "__main__":
