@@ -5,7 +5,7 @@ import torch
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 from image_utils import numpy_to_base64, base64_to_numpy, plot_results
-
+import traceback
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -32,21 +32,23 @@ class PredictRequest(BaseModel):
     image: str
 
 @app.get("/")
-def home():
+async def home():
     try:
         return {"message": "Welcome to YOLO model API."}
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.post("/predict")
-def predict(request: PredictRequest):
+async def predict(request: PredictRequest):
     try:
-        image = base64_to_numpy(request.image)
+        image = await base64_to_numpy(request.image)
         results = app.state.model(image)
-        result_img = plot_results(results, image, app.state.model)
-        img_base64 = numpy_to_base64(result_img)
+        result_img = await plot_results(results, image, app.state.model)
+        img_base64 = await numpy_to_base64(result_img)
         return JSONResponse(content={'image': img_base64})
     except Exception as e:
+        print("Error during prediction:", e)
+        traceback.print_exc()
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 if __name__ == "__main__":

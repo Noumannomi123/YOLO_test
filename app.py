@@ -5,7 +5,7 @@ from PIL import Image
 import cv2
 import numpy as np
 from image_utils import numpy_to_base64, base64_to_numpy
-
+import asyncio
 st.set_page_config(
     page_title="YOLO Object Detection",
     page_icon="🤖", # Optional: Add an emoji or path to a favicon
@@ -41,7 +41,6 @@ with col_info:
         unsafe_allow_html=True
     )
 
-
 # --- Image Processing and Prediction Display ---
 if uploaded_file is not None:
     st.divider()
@@ -67,7 +66,7 @@ if uploaded_file is not None:
             with st.spinner('🔄 Sending image and awaiting prediction...'):
                 try:
                     # 1. Convert image to base64
-                    img_base64 = numpy_to_base64(image_cv2)
+                    img_base64 = asyncio.run(numpy_to_base64(image_cv2))
 
                     # 2. Send request to the backend API
                     api_url = "http://localhost:8000/predict" # Make sure this is correct
@@ -78,7 +77,7 @@ if uploaded_file is not None:
                     result_json = response.json()
                     if "image" in result_json:
                         result_img_base64 = result_json["image"]
-                        result_image_cv2 = base64_to_numpy(result_img_base64)
+                        result_image_cv2 = asyncio.run(base64_to_numpy(result_img_base64))
                         # Convert BGR (OpenCV default) back to RGB for PIL/Streamlit display
                         result_image_rgb = cv2.cvtColor(result_image_cv2, cv2.COLOR_BGR2RGB)
                         st.image(result_image_rgb, caption="Image with Detections", use_container_width=True)
